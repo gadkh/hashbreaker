@@ -1,13 +1,7 @@
 from sqlalchemy import Column, String, Enum, DateTime
 from sqlalchemy.sql import func
-import enum
 from ..database import Base
-
-class TaskStatus(str, enum.Enum):
-    PENDING = "PENDING"
-    PROCESSING = "PROCESSING"
-    COMPLETED = "COMPLETED"
-    EXHAUSTED = "EXHAUSTED"
+from shared.enums import TaskStatus
 
 class HashTask(Base):
     __tablename__ = "hash_tasks"
