@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hashbreaker-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hashbreaker
+    ports:
+      - "5432:5432"
+    volumes:
+      # מגדיר Persistence: הנתונים יישמרו גם אם הקונטיינר ייהרס
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # מוודא שה-DB באמת מוכן לקבל חיבורים לפני שסרביסים אחרים עולים
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hashbreaker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hashbreaker-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: hashbreaker-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@hashbreaker.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hashbreaker-network
+
+volumes:
+  postgres_data:
+
+networks:
+  hashbreaker-network:
+    driver: bridge
