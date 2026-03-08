@@ -7,7 +7,6 @@ CHUNK_SIZE = 1_000_000
 
 async def dispatch_crack_task(hash_value: str):
     tasks_to_publish = []
-
     for prefix in PREFIXES:
         for start in range(0, 10_000_000, CHUNK_SIZE):
             end = start + CHUNK_SIZE - 1
