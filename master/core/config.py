@@ -6,6 +6,8 @@ class Settings(BaseSettings):
 
     RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
 
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     JOBS_QUEUE: str = "jobs_queue"
     RESULTS_QUEUE: str = "results_queue"
 
