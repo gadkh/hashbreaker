@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from master.routers.v1 import api_router
 from master.db.database import engine
 from master.db.models.hash_task import Base
+from master.services.queue_sub import start_results_consumer
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -11,8 +13,12 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     print("Master API initialized. Async DB connected.")
+    consumer_task = asyncio.create_task(start_results_consumer())
+    print("Started RabbitMQ results consumer.")
     yield
+    consumer_task.cancel()
     print("Shutting down Master API...")
+    print("Shutting down Master API and background tasks...")
 
 
 app = FastAPI(
@@ -34,4 +40,4 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("master.main:app", host="0.0.0.0", port=8000, reload=True)
