@@ -1,6 +1,8 @@
 import asyncio
 import aio_pika
 from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from shared.messages import CrackResult
 from shared.enums import TaskStatus
 from shared.logger import setup_logger
@@ -12,6 +14,34 @@ import redis.asyncio as aioredis
 logger = setup_logger(__name__)
 
 redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+async def update_not_found(result_data:CrackResult, db: AsyncSession) -> None:
+    logger.warning(f"Received NOT_FOUND signal for hash {result_data.hash_value}")
+    stmt = (
+        update(HashTask)
+        .where(HashTask.hash_value == result_data.hash_value)
+        .values(status=TaskStatus.NOT_FOUND)
+    )
+    await db.execute(stmt)
+    await db.commit()
+    logger.info(f"Database updated to NOT_FOUND for hash {result_data.hash_value}")
+
+
+async def update_completed(result_data:CrackResult, db: AsyncSession) -> None:
+    stmt = (
+        update(HashTask)
+        .where(HashTask.hash_value == result_data.hash_value)
+        .values(
+            status=TaskStatus.COMPLETED,
+            cracked_password=result_data.cracked_password
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()
+    logger.info(f"Database successfully updated to COMPLETED for hash {result_data.hash_value}")
+    await set_redis(result_data)
+
 
 async def set_redis(result_data: CrackResult) -> None:
     await redis_client.set(
@@ -29,18 +59,12 @@ async def process_result_message(message: aio_pika.IncomingMessage):
             logger.info(f"Received cracked result for hash {result_data.hash_value}")
             logger.info(f"Password found: {result_data.cracked_password}")
             async with AsyncSessionLocal() as db:
-                stmt = (
-                    update(HashTask)
-                    .where(HashTask.hash_value == result_data.hash_value)
-                    .values(
-                        status=TaskStatus.COMPLETED,
-                        cracked_password=result_data.cracked_password
-                    )
-                )
-                await db.execute(stmt)
-                await db.commit()
-                logger.info(f"Database successfully updated to COMPLETED for hash {result_data.hash_value}")
-                await set_redis(result_data)
+                if result_data.not_found:
+                    await update_not_found(result_data, db)
+
+                else:
+                    await update_completed(result_data, db)
+                    await set_redis(result_data)
         except Exception as e:
             logger.error(f"Error processing result message: {e}", exc_info=True)
 

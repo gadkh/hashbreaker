@@ -1,6 +1,10 @@
 from shared.messages import ChunkTask
 from master.services.queue_pub import publish_tasks
+from master.core.config import settings
 from shared.logger import setup_logger
+import redis.asyncio as aioredis
+
+redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
 
 logger = setup_logger(__name__)
 
@@ -25,6 +29,10 @@ async def dispatch_crack_task(hash_value: str):
                 end_range=end
             )
             tasks_to_publish.append(task)
+    total_chunks = len(tasks_to_publish)
+    await redis_client.set(f"pending_chunks:{hash_value}", total_chunks)
+    logger.info(f"Set Redis pending_chunks counter to {total_chunks} for hash {hash_value}")
+
     logger.info(f"Prepared {len(tasks_to_publish)} chunks. Sending to RabbitMQ...")
     await publish_tasks(tasks_to_publish)
     logger.info(f"Successfully dispatched all {len(tasks_to_publish)} chunks to the queue for hash {hash_value}")

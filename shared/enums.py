@@ -1,7 +1,7 @@
 from enum import Enum
 
 class TaskStatus(str, Enum):
-    PENDING = "PENDING"
     PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
-    EXHAUSTED = "EXHAUSTED"
+    NOT_FOUND = "NOT_FOUND"
+    PENDING = "PENDING"

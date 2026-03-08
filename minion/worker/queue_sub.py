@@ -1,5 +1,6 @@
 import pika
 import json
+import redis
 from pydantic import ValidationError
 from minion.core.config import settings
 from minion.worker.cracker import crack_chunk
@@ -7,6 +8,8 @@ from shared.messages import ChunkTask, CrackResult
 from shared.logger import setup_logger
 
 logger = setup_logger(__name__)
+
+redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 def process_message(ch, method, properties, body):
@@ -36,6 +39,22 @@ def process_message(ch, method, properties, body):
                 routing_key=settings.RESULTS_QUEUE,
                 body=result_msg.model_dump_json()
             )
+        else:
+            chunks_left = redis_client.decr(f"pending_chunks:{task.hash_value}")
+            logger.debug(f"[Minion {settings.MINION_ID}] Chunks left for {task.hash_value}: {chunks_left}")
+            if chunks_left == 0:
+                status = redis_client.get(f"hash_status:{task.hash_value}")
+                if status != "COMPLETED":
+                    logger.info(
+                        f"[Minion {settings.MINION_ID}] I'm the last chunk and no one found it! Hash is NOT_FOUND.")
+                    result_msg = CrackResult(
+                        hash_value=task.hash_value,
+                        cracked_password=None,
+                        minion_id=settings.MINION_ID,
+                        not_found=True
+                    )
+                    ch.basic_publish(exchange='', routing_key=settings.RESULTS_QUEUE, body=result_msg.model_dump_json())
+
     except ValidationError as e:
         logger.error(f"[Minion {settings.MINION_ID}] Failed to validate task data: {e}", exc_info=True)
         raise e
