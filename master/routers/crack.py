@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared.api import CrackRequest, CrackResponse, StatusResponse
 from master.db.database import get_session
