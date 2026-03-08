@@ -1,5 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+from master.services.hash_manager import dispatch_crack_task
 from shared.api import CrackRequest, CrackResponse, StatusResponse
 from shared.enums import TaskStatus
 from master.db.models.hash_task import HashTask
@@ -24,6 +26,7 @@ async def process_crack_request(request: CrackRequest, db: AsyncSession) -> Crac
     await db.refresh(new_task)
 
     # TODO: await dispatch_crack_task(request.hash_value)
+    await dispatch_crack_task(request.hash_value)
 
     return CrackResponse(
         hash_value=new_task.hash_value,
@@ -32,7 +35,7 @@ async def process_crack_request(request: CrackRequest, db: AsyncSession) -> Crac
     )
 
 
-async def get_task_status(hash_value: str, db: AsyncSession) -> StatusResponse | None:
+async def get_task_status(hash_value: str, db: AsyncSession) : #-> StatusResponse | None:
 
     stmt = select(HashTask).where(HashTask.hash_value == hash_value)
     result = await db.execute(stmt)
