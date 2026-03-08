@@ -5,21 +5,26 @@ from master.routers.v1 import api_router
 from master.db.database import engine
 from master.db.models.hash_task import Base
 from master.services.queue_sub import start_results_consumer
+from shared.logger import setup_logger
 import asyncio
 import uvicorn
 
+
+logger = setup_logger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting HashBreaker Master Service...")
+    logger.info("Initializing Database...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    print("Master API initialized. Async DB connected.")
+    logger.info("Starting RabbitMQ Consumer in the background...")
     consumer_task = asyncio.create_task(start_results_consumer())
-    print("Started RabbitMQ results consumer.")
     yield
     consumer_task.cancel()
-    print("Shutting down Master API...")
-    print("Shutting down Master API and background tasks...")
+    logger.info("Shutting down Master API...")
+    logger.info("Shutting down Master API and background tasks...")
 
 
 app = FastAPI(
