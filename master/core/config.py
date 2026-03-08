@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URI: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/hashbreaker"
+    print(f"SQLALCHEMY_DATABASE_URI:: {SQLALCHEMY_DATABASE_URI}")
 
     RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
 
