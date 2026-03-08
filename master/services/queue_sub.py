@@ -6,6 +6,16 @@ from shared.enums import TaskStatus
 from master.core.config import settings
 from master.db.database import AsyncSessionLocal
 from master.db.models.hash_task import HashTask
+import redis.asyncio as aioredis
+
+redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
+async def set_redis(result_data: CrackResult) -> None:
+    await redis_client.set(
+        f"hash_status:{result_data.hash_value}",
+        "COMPLETED",
+        ex=86400
+    )
 
 
 async def process_result_message(message: aio_pika.IncomingMessage):
@@ -23,6 +33,7 @@ async def process_result_message(message: aio_pika.IncomingMessage):
                 )
                 await db.execute(stmt)
                 await db.commit()
+                await set_redis(result_data)
         except Exception as e:
             print(e)
 

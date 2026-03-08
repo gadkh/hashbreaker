@@ -50,6 +50,26 @@ services:
     networks:
       - hashbreaker-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: hashbreaker-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - hashbreaker-network
+
+  redis-ui:
+    image: rediscommander/redis-commander:latest
+    container_name: hashbreaker-redis-ui
+    environment:
+      - REDIS_HOSTS=local:hashbreaker-redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - hashbreaker-network
+    depends_on:
+      - redis
+
 volumes:
   postgres_data:
 
